@@ -1,6 +1,5 @@
 {
   "slackAppId": "AEXAMPLEAPP",
   "slackTeamId": "TEXAMPLEWORKSPACE",
-  "slackChannel": "CEXAMPLECHANNEL",
-  "slackTriggerUser": "UEXAMPLEUSER"
+  "slackChannel": "CEXAMPLECHANNEL"
 }

@@ -43,12 +43,12 @@ const saved = {
 const enrichLead = mock.fn(async () => { throw new Error('Opening details must never start research'); });
 const getLead = mock.fn(async () => saved);
 const runDemoReplies = mock.fn(async () => {});
-mock.module(new URL('../lib/demo-trigger.ts', import.meta.url).href, { exports: { matchDemoTrigger, runDemoReplies } });
-mock.module(storeUrl, { exports: { getLead } });
-mock.module(new URL('../lib/lead-enrichment.ts', import.meta.url).href, { exports: { enrichLead } });
-mock.module('@vercel/connect', { exports: { getToken } });
-mock.module('@vercel/connect/chat', { exports: { createConnectWebhookVerifier: () => verify } });
-mock.module('next/server.js', { exports: { after: (callback) => tasks.push(callback) } });
+mock.module(new URL('../lib/demo-trigger.ts', import.meta.url).href, { namedExports: { matchDemoTrigger, runDemoReplies } });
+mock.module(storeUrl, { namedExports: { getLead } });
+mock.module(new URL('../lib/lead-enrichment.ts', import.meta.url).href, { namedExports: { enrichLead } });
+mock.module('@vercel/connect', { namedExports: { getToken } });
+mock.module('@vercel/connect/chat', { namedExports: { createConnectWebhookVerifier: () => verify } });
+mock.module('next/server.js', { namedExports: { after: (callback) => tasks.push(callback) } });
 const { POST } = await import(routeUrl);
 hooks.deregister();
 
@@ -134,20 +134,21 @@ test('acknowledges unrelated subscribed events without side effects', async () =
 const kickoff = (overrides = {}) => ({
   ...event,
   event: {
-    type: 'message', channel_type: 'channel', user: demoConfig.slackTriggerUser,
-    channel: 'COTHERPUBLIC', ts: '1789000200.123456', text: scenes.seed[0].text, ...overrides,
+    type: 'message', channel_type: 'channel', user: 'UPRESENTER',
+    channel: demoConfig.slackChannel, ts: '1789000200.123456', text: scenes.seed[0].text, ...overrides,
   },
 });
 
 for (const scene of ['seed', 'playbook']) {
   test(`${scene}: verifies the kickoff before scheduling and acknowledges before selected threaded replies`, async () => {
-    for (const channel of ['COTHERPUBLIC', 'CSECONDPUBLIC']) {
+    for (const user of ['UPRESENTER', 'UOTHER']) {
+      const channel = demoConfig.slackChannel;
       const started = Promise.withResolvers();
       const verified = Promise.withResolvers();
       verify.mock.mockImplementation(async () => { started.resolve(); return verified.promise; });
       const callsBefore = runDemoReplies.mock.callCount();
       const text = ` \n${scenes[scene][0].text.replaceAll(' ', '\t\n').replaceAll('’', "'")}  `;
-      const body = kickoff({ channel, text });
+      const body = kickoff({ channel, user, text });
       const incoming = request(body);
       const pendingResponse = POST(incoming);
       await started.promise;
@@ -163,7 +164,7 @@ for (const scene of ['seed', 'playbook']) {
       await tasks.pop()();
       assert.equal(runDemoReplies.mock.callCount(), callsBefore + 1);
       assert.deepEqual(runDemoReplies.mock.calls.at(-1).arguments, [{
-        scene, channel, ts: '1789000200.123456', user: demoConfig.slackTriggerUser,
+        scene, channel, ts: '1789000200.123456', user,
       }]);
     }
     assert.equal(getLead.mock.callCount(), 0);
@@ -172,11 +173,11 @@ for (const scene of ['seed', 'playbook']) {
 }
 
 for (const scene of ['seed', 'playbook']) {
-  test(`${scene}: ordinary messages, other users, bots, edits, private channels and thread replies do not schedule`, async () => {
+  test(`${scene}: ordinary messages, other channels, bots, edits, private channels and thread replies do not schedule`, async () => {
     for (const overrides of [
-      { text: 'hello' }, { user: 'UNOTMATT' }, { user: undefined },
+      { text: 'hello' }, { user: undefined }, { channel: 'COTHERPUBLIC' },
       { bot_id: 'BTEST' }, { app_id: 'ATEST' }, { subtype: 'bot_message' }, { hidden: false },
-      { subtype: 'message_changed' }, { edited: { user: demoConfig.slackTriggerUser, ts: '1789000300.000001' } },
+      { subtype: 'message_changed' }, { edited: { user: 'UPRESENTER', ts: '1789000300.000001' } },
       { thread_ts: '1789000000.000001' }, { subtype: null }, { edited: null },
       { channel_type: 'group' }, { channel_type: 'im' }, { channel_type: 'mpim' },
       { channel: 'GPRIVATE' }, { channel: 'DDIRECT' },

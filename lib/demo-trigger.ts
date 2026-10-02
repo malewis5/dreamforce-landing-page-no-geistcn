@@ -1,7 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import { Redis } from '@upstash/redis';
 import { getToken } from '@vercel/connect';
-import demoConfig from '../demo.config.json' with { type: 'json' };
 import { scenes } from '../scripts/demo-scenes.mjs';
 import { buildMessage, slackCall, target } from './demo-runner.mjs';
 
@@ -32,12 +31,10 @@ function record(value: unknown): Record<string, unknown> | null {
 
 function validTrigger(value: unknown): value is DemoTrigger & Record<string, unknown> {
   const event = record(value);
-  const user: unknown = process.env.SLACK_TRIGGER_USER_ID
-    || (demoConfig as { slackTriggerUser?: unknown }).slackTriggerUser;
-  return !!event && typeof user === 'string' && /^U[A-Z0-9]+$/.test(user)
-    && (event.scene === 'seed' || event.scene === 'playbook')
-    && event.user === user
-    && typeof event.channel === 'string' && /^C[A-Z0-9]+$/.test(event.channel)
+  return !!event && (event.scene === 'seed' || event.scene === 'playbook')
+    && typeof event.user === 'string' && /^U[A-Z0-9]+$/.test(event.user)
+    && typeof event.channel === 'string' && event.channel === target.channel
+    && /^C[A-Z0-9]+$/.test(event.channel)
     && typeof event.ts === 'string' && /^\d+\.\d+$/.test(event.ts);
 }
 

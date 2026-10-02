@@ -6,13 +6,13 @@ import { buildMessage, target } from '../lib/demo-runner.mjs';
 
 const getToken = mock.fn();
 const fromEnv = mock.fn();
-mock.module('@vercel/connect', { exports: { getToken } });
-mock.module('@upstash/redis', { exports: { Redis: { fromEnv } } });
+mock.module('@vercel/connect', { namedExports: { getToken } });
+mock.module('@upstash/redis', { namedExports: { Redis: { fromEnv } } });
 const { matchDemoTrigger, runDemoReplies } = await import('../lib/demo-trigger.ts');
 
 const event = (overrides = {}) => ({
-  type: 'message', channel_type: 'channel', channel: 'CPUBLICONE',
-  user: demoConfig.slackTriggerUser, ts: '1789000000.123456', text: scenes.seed[0].text,
+  type: 'message', channel_type: 'channel', channel: demoConfig.slackChannel,
+  user: 'UPRESENTER', ts: '1789000000.123456', text: scenes.seed[0].text,
   ...overrides,
 });
 const trigger = (overrides) => matchDemoTrigger(event(overrides));
@@ -70,18 +70,16 @@ beforeEach((t) => {
 });
 
 for (const scene of ['seed', 'playbook']) {
-  test(`${scene}: matches only the configured human opener in two public channels, with documented normalization`, () => {
-    assert.match(demoConfig.slackTriggerUser, /^U[A-Z0-9]+$/);
-    for (const channel of ['CPUBLICONE', 'CPUBLICTWO']) {
-      assert.notEqual(channel, demoConfig.slackChannel);
-      const opener = scenes[scene][0].text;
+  test(`${scene}: matches exact kickoff from any human in the configured channel`, () => {
+    const opener = scenes[scene][0].text;
+    for (const user of ['UPRESENTER', 'UOTHER']) {
       for (const text of [opener, ` \n${opener.replaceAll(' ', '\t\n').replaceAll('’', "'")}  `,
         opener.replaceAll('’', '‘')]) {
-        assert.deepEqual(matchDemoTrigger(event({ channel, text })), {
-          scene, channel, user: demoConfig.slackTriggerUser, ts: '1789000000.123456',
+        assert.deepEqual(matchDemoTrigger(event({ user, text })), {
+          scene, channel: demoConfig.slackChannel, user, ts: '1789000000.123456',
         });
       }
-      assert.equal(matchDemoTrigger(event({ channel, text: opener, scene: 'website' })).scene, scene,
+      assert.equal(matchDemoTrigger(event({ user, text: opener, scene: 'website' })).scene, scene,
         'scene is derived from allowlisted text, not inbound metadata');
     }
   });
@@ -90,6 +88,8 @@ for (const scene of ['seed', 'playbook']) {
 test('the Services kickoff replaces the retired furniture kickoff', () => {
   assert.match(scenes.seed[0].text, /Services section/);
   assert.ok(matchDemoTrigger(event()));
+  assert.equal(matchDemoTrigger(event({ user: 'UOTHER' }))?.user, 'UOTHER');
+  assert.equal(matchDemoTrigger(event({ channel: 'COTHERPUBLIC' })), null);
   assert.equal(matchDemoTrigger(event({ text: 'Another inquiry for a single desk this morning. We’re getting a lot of these, but the projects we’re best at are furnishing whole offices. Are we setting the right expectation on the website?' })), null);
 });
 
@@ -109,7 +109,7 @@ for (const scene of ['seed', 'playbook']) {
     const message = (overrides = {}) => event({ text: opener, ...overrides });
     for (const value of [null, undefined, [], true, 'message', {}, ...[
       { type: 'app_mention' }, { channel_type: 'group' }, { channel_type: 'im' }, { channel_type: 'mpim' },
-      { user: 'UOTHER' }, { user: undefined }, { channel: 'GPRIVATE' }, { channel: 'DDIRECT' },
+      { user: 'not-a-user' }, { user: undefined }, { channel: 'COTHERPUBLIC' }, { channel: 'GPRIVATE' }, { channel: 'DDIRECT' },
       { channel: 'Cbad' }, { channel: 'C' }, { channel: 'C123:bad' }, { channel: 123 },
       { ts: undefined }, { ts: 123 }, { ts: '123' }, { ts: '123.456:bad' },
       { subtype: 'message_changed' }, { subtype: 'message_deleted' }, { subtype: 'bot_message' },
@@ -130,24 +130,6 @@ for (const scene of ['seed', 'playbook']) {
   });
 }
 
-test('missing or invalid configured user fails closed in both matcher and worker', async (t) => {
-  const original = demoConfig.slackTriggerUser;
-  const values = ['seed', 'playbook'].map((scene) => trigger({ text: scenes[scene][0].text }));
-  t.after(() => { demoConfig.slackTriggerUser = original; });
-  for (const user of [undefined, null, '', 'not-a-user', 123]) {
-    if (user === undefined) delete demoConfig.slackTriggerUser;
-    else demoConfig.slackTriggerUser = user;
-    for (const value of values) {
-      const text = scenes[value.scene][0].text;
-      assert.equal(matchDemoTrigger(event({ text, user: original })), null);
-      assert.equal(matchDemoTrigger(event({ text })), null);
-      await assert.rejects(runDemoReplies(value), /Invalid demo trigger/);
-    }
-  }
-  assert.equal(fromEnv.mock.callCount(), 0);
-  assert.equal(getToken.mock.callCount(), 0);
-});
-
 test('worker guards scene/user/channel/ts before storage or external side effects', async () => {
   const h = harness();
   const omittedScene = { ...trigger() };
@@ -156,7 +138,7 @@ test('worker guards scene/user/channel/ts before storage or external side effect
     ...[undefined, null, '', 'website', 'unknown', 'SEED', 'toString', '__proto__', 123, ['seed'], {}]
       .map((scene) => ({ ...trigger(), scene }))];
   for (const scene of ['seed', 'playbook']) {
-    for (const overrides of [{ user: 'UOTHER' }, { user: undefined }, { channel: 'GPRIVATE' },
+    for (const overrides of [{ user: 'not-a-user' }, { user: undefined }, { channel: 'COTHERPUBLIC' }, { channel: 'GPRIVATE' },
       { channel: 'DDIRECT' }, { ts: 'invalid' }]) {
       invalid.push({ ...trigger(), scene, ...overrides });
     }
@@ -173,7 +155,7 @@ test('worker guards scene/user/channel/ts before storage or external side effect
 });
 
 test('posts only Jordan → Maya → Alex → Sam, in the original thread/channel, persisting each receipt', async () => {
-  for (const channel of ['CPUBLICONE', 'CPUBLICTWO']) {
+  for (const channel of [demoConfig.slackChannel]) {
     const h = harness();
     const value = trigger({ channel });
     await runDemoReplies(value, h.options);
@@ -205,7 +187,7 @@ test('posts only Jordan → Maya → Alex → Sam, in the original thread/channe
 });
 
 test('playbook posts only Sam → Maya → Jordan in the original thread/channel, never duplicating the parent', async () => {
-  for (const channel of ['CPUBLICONE', 'CPUBLICTWO']) {
+  for (const channel of [demoConfig.slackChannel]) {
     const h = harness();
     const value = trigger({ channel, text: scenes.playbook[0].text });
     await runDemoReplies(value, h.options);
@@ -283,7 +265,7 @@ test('fresh workers never resume legacy or scene-tagged claims, pending posts, o
   for (const progress of [
     { status: 'running', receipts: [] },
     { status: 'needs-review', pending: 0, receipts: [] },
-    { status: 'running', receipts: [{ channel: 'CPUBLICONE', ts: '2.000', thread_ts: trigger().ts }] },
+    { status: 'running', receipts: [{ channel: 'CEXAMPLECHANNEL', ts: '2.000', thread_ts: trigger().ts }] },
     { status: 'complete', receipts: [] },
   ]) {
     for (const metadata of [{}, { scene: 'seed' }, { scene: 'playbook' }]) {
@@ -364,9 +346,9 @@ test('ambiguous post failure preserves pending and is never automatically replay
 
 test('channel info must confirm matching id, explicitly public and not archived', async () => {
   for (const channel of [undefined, null, {}, { id: 'COTHER', is_private: false, is_archived: false },
-    { id: 'CPUBLICONE', is_private: true, is_archived: false },
-    { id: 'CPUBLICONE', is_archived: false }, { id: 'CPUBLICONE', is_private: false },
-    { id: 'CPUBLICONE', is_private: false, is_archived: true }]) {
+    { id: 'CEXAMPLECHANNEL', is_private: true, is_archived: false },
+    { id: 'CEXAMPLECHANNEL', is_archived: false }, { id: 'CEXAMPLECHANNEL', is_private: false },
+    { id: 'CEXAMPLECHANNEL', is_private: false, is_archived: true }]) {
     const h = harness();
     h.options.call = async (_token, method, body) => {
       h.calls.push({ method, body });
@@ -374,16 +356,16 @@ test('channel info must confirm matching id, explicitly public and not archived'
     };
     await assert.rejects(runDemoReplies(trigger(), h.options), genericFailure);
     await runDemoReplies(trigger(), h.options);
-    assert.deepEqual(h.calls, [{ method: 'conversations.info', body: { channel: 'CPUBLICONE' } }]);
+    assert.deepEqual(h.calls, [{ method: 'conversations.info', body: { channel: 'CEXAMPLECHANNEL' } }]);
     assert.equal(h.records.get(keyFor(trigger())).status, 'needs-review');
   }
 });
 
 test('wrong channel, missing thread confirmation, or malformed receipt stops all remaining replies', async () => {
   for (const data of [null, {}, { channel: 'COTHER', ts: '2.000', message: { thread_ts: trigger().ts } },
-    { channel: 'CPUBLICONE', ts: '2.000' },
-    { channel: 'CPUBLICONE', ts: '2.000', message: { thread_ts: '1.000' } },
-    { channel: 'CPUBLICONE', ts: 'bad', message: { thread_ts: trigger().ts } }]) {
+    { channel: 'CEXAMPLECHANNEL', ts: '2.000' },
+    { channel: 'CEXAMPLECHANNEL', ts: '2.000', message: { thread_ts: '1.000' } },
+    { channel: 'CEXAMPLECHANNEL', ts: 'bad', message: { thread_ts: trigger().ts } }]) {
     const h = harness();
     const original = h.options.call;
     h.options.call = async (...args) => args[1] === 'conversations.info' ? original(...args) : { data };
@@ -419,9 +401,9 @@ test('shared Slack call retries only explicit 429 while pending stays durable', 
     assert.ok(init.signal instanceof AbortSignal);
     assert.equal(init.headers.Authorization, 'Bearer fake-token');
     if (url.includes('conversations.info')) {
-      assert.equal(url, 'https://slack.com/api/conversations.info?channel=CPUBLICONE');
+      assert.equal(url, 'https://slack.com/api/conversations.info?channel=CEXAMPLECHANNEL');
       assert.equal(init.method, 'GET');
-      return Response.json({ ok: true, channel: { id: 'CPUBLICONE', is_private: false, is_archived: false } });
+      return Response.json({ ok: true, channel: { id: 'CEXAMPLECHANNEL', is_private: false, is_archived: false } });
     }
     assert.equal(url, 'https://slack.com/api/chat.postMessage');
     const body = JSON.parse(init.body);
@@ -452,7 +434,7 @@ test('45s global deadline and shared 15s call timeout both cancel fetch without 
     let posts = 0;
     h.options.fetchFn = async (url, init) => {
       if (url.includes('conversations.info')) return Response.json({ ok: true,
-        channel: { id: 'CPUBLICONE', is_private: false, is_archived: false } });
+        channel: { id: 'CEXAMPLECHANNEL', is_private: false, is_archived: false } });
       posts++;
       clocks.get(timeout).abort();
       assert.equal(init.signal.aborted, true);
@@ -483,7 +465,7 @@ test('deadline cancels inter-message and rate-limit waits, with no later post or
     delete h.options.call;
     h.options.fetchFn = async (url, init) => {
       if (url.includes('conversations.info')) return Response.json({ ok: true,
-        channel: { id: 'CPUBLICONE', is_private: false, is_archived: false } });
+        channel: { id: 'CEXAMPLECHANNEL', is_private: false, is_archived: false } });
       posts++;
       if (rateLimited) return new Response('{}', { status: 429, headers: { 'retry-after': '120' } });
       const body = JSON.parse(init.body);
