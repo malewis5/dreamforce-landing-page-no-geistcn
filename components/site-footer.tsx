@@ -6,6 +6,7 @@ const FOOTER_COLUMNS = [
     heading: 'Studio',
     links: [
       { label: 'About', href: '#about' },
+      { label: 'Services', href: '#services' },
       { label: 'Commission', href: '#commission' },
     ],
   },
