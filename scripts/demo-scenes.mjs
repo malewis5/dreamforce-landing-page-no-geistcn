@@ -1,3 +1,5 @@
+import demoConfig from '../demo.config.json' with { type: 'json' };
+
 // Fictional cast, not real Slack members. Edit the dialogue here between rehearsals.
 export const cast = {
   maya: { name: 'Maya — Sales', icon: ':briefcase:' },
@@ -12,7 +14,7 @@ export const scenes = {
     { actor: 'jordan', text: 'Let’s add a Services section between Studio and Commission so clients can quickly see what we offer.' },
     { actor: 'maya', text: 'Exactly. We do more than framing—we design, build, and install complete displays. That’s what customers need to see.' },
     { actor: 'alex', text: 'Let’s use our existing design and display-case photo so the new section feels like part of the site.' },
-    { actor: 'sam', text: 'This is the Dreamforce Landing Page project in Vercel.' },
+    { actor: 'sam', text: `This is the ${demoConfig.vercelProjectName} project in Vercel.` },
   ],
   website: [
     { actor: 'maya', text: 'For the Services preview, check that all six offerings are there: Conservation Framing, Bespoke Display Systems, Design Consultation, In-House Fabrication, White-Glove Installation, and Lasting Presentation. Each should explain what the customer gets, not just show a title.' },
@@ -21,7 +23,7 @@ export const scenes = {
   ],
   playbook: [
     { actor: 'maya', text: 'The website is clearer now. Can we make sure the inbound lead agent knows which projects we actually want?' },
-    { actor: 'sam', text: 'The prototype is live in the Dreamforce Landing Page project in Vercel. It researches companies and posts a fit score in Slack.' },
+    { actor: 'sam', text: `The prototype is live in the ${demoConfig.vercelProjectName} project in Vercel. It researches companies and posts a fit score in Slack.` },
     { actor: 'maya', text: 'Prioritize full framing and display projects for premium NYC spaces, usually $30–50k. If budget or timing is missing, ask—don’t guess.' },
     { actor: 'jordan', text: 'Position us as an end-to-end studio, not a frame shop. For promising projects, draft a helpful reply offering a design consultation.' },
   ],

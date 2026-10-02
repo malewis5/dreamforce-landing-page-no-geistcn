@@ -11,6 +11,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { cast, scenes } from "./demo-scenes.mjs";
+import demoConfig from "../demo.config.json" with { type: "json" };
 import {
   target,
   buildMessage,
@@ -22,7 +23,7 @@ import {
 export { target, buildMessage, slackCall, playScene };
 
 const root = fileURLToPath(new URL("../", import.meta.url));
-const help = `Dreamforce demo director (Vercel Connect)
+const help = `${demoConfig.vercelProjectName} demo director (Vercel Connect)
   pnpm demo seed                      Post the opening conversation
   pnpm demo play website              Play a scene (website or playbook)
   pnpm demo next playbook             Post just the next line of a scene

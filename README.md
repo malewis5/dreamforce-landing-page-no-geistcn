@@ -1,4 +1,4 @@
-# Dreamforce landing page
+# nyc-framing
 
 A Next.js landing page for a fictional New York framing and display studio. This
 public copy uses local Tailwind styles and form controls instead of
@@ -22,7 +22,7 @@ The landing page renders without credentials. To accept contact submissions,
 configure an Upstash Redis database with `KV_REST_API_URL` and
 `KV_REST_API_TOKEN` (or the corresponding `UPSTASH_REDIS_REST_URL` and
 `UPSTASH_REDIS_REST_TOKEN` variables). Slack delivery uses a Vercel Connect
-connection set by `SLACK_CONNECTOR_ID` (default: `slack/dreamforce-landing-page`). Lead research uses Eve and
+connection set by `SLACK_CONNECTOR_ID` (default: `slack/demo-agent`). Lead research uses Eve and
 requires an AI Gateway key or linked Vercel development credentials.
 
 `demo.config.json` contains example Slack app, workspace, and channel IDs. For a

@@ -259,7 +259,7 @@ test('acks before reading KV and presents the original submission with its store
   await delivery;
   assert.equal(getLead.mock.callCount(), 1);
   assert.deepEqual(getLead.mock.calls[0].arguments, [saved.id]);
-  assert.deepEqual(getToken.mock.calls[0].arguments, ['slack/dreamforce-landing-page', {
+  assert.deepEqual(getToken.mock.calls[0].arguments, ['slack/demo-agent', {
     subject: { type: 'app' }, installationId: demoConfig.slackTeamId,
   }]);
   assert.equal(fetchMock.mock.callCount(), 1);

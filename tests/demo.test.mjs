@@ -135,7 +135,7 @@ test('Services replies stay brief and audience-readable', () => {
   assert.equal(buildMessage(scenes.seed[3]).username, 'Alex — Design');
   assert.equal(buildMessage(scenes.seed[3]).icon_emoji, ':art:');
   assert.equal(buildMessage(scenes.seed[4]).username, 'Sam — Engineering');
-  assert.equal(scenes.seed[4].text, 'This is the Dreamforce Landing Page project in Vercel.');
+  assert.equal(scenes.seed[4].text, 'This is the nyc-framing project in Vercel.');
   for (const { text } of scenes.seed.slice(1)) {
     assert.ok(text.length <= 160, 'Replies must fit in a short Slack message');
     assert.ok(text.split(/\s+/).length <= 30, 'No walls of text onstage');
@@ -148,10 +148,10 @@ test('Inbound Lead Agent scene is a short Engineering, Sales, and Marketing conv
   assert.equal(scenes.playbook[0].text, 'The website is clearer now. Can we make sure the inbound lead agent knows which projects we actually want?');
   assert.notEqual(scenes.playbook[0].text, scenes.seed[0].text);
   assert.deepEqual(scenes.playbook.map((line) => line.actor), ['maya', 'sam', 'maya', 'jordan']);
-  assert.equal(scenes.playbook[1].text, 'The prototype is live in the Dreamforce Landing Page project in Vercel. It researches companies and posts a fit score in Slack.');
+  assert.equal(scenes.playbook[1].text, 'The prototype is live in the nyc-framing project in Vercel. It researches companies and posts a fit score in Slack.');
   for (const message of [scenes.seed[4], scenes.playbook[1]]) {
     assert.equal(message.actor, 'sam');
-    assert.ok(message.text.includes('the Dreamforce Landing Page project in Vercel'), 'Both demos must identify the Vercel project explicitly');
+    assert.ok(message.text.includes('the nyc-framing project in Vercel'), 'Both demos must identify the Vercel project explicitly');
   }
   assert.match(scenes.playbook[1].text, /fit score/);
   assert.match(scenes.playbook[2].text, /premium NYC spaces/);

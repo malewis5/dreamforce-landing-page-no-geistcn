@@ -1,4 +1,5 @@
 {
+  "vercelProjectName": "nyc-framing",
   "slackAppId": "AEXAMPLEAPP",
   "slackTeamId": "TEXAMPLEWORKSPACE",
   "slackChannel": "CEXAMPLECHANNEL"

@@ -263,7 +263,7 @@ test("accepts after persistence, then enriches and saves before sending the Work
   );
   assert.equal(fetchMock.mock.callCount(), 1);
   assert.deepEqual(getToken.mock.calls[0].arguments, [
-    "slack/dreamforce-landing-page",
+    "slack/demo-agent",
     { subject: { type: "app" } },
   ]);
   const [url, options] = fetchMock.mock.calls[0].arguments;

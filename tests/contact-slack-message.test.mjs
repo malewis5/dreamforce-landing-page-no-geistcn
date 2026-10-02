@@ -42,7 +42,7 @@ test('posts a real Item Work Object rather than Block Kit imitation', () => {
   assert.equal(item.url, `https://example.com/demo/leads/${identity.id}`);
   assert.deepEqual(item.entity_payload.attributes, {
     title: { text: 'Inbound Lead' }, display_type: 'Lead', display_id: 'LEAD-12345678',
-    product_name: 'Dreamforce', metadata_last_modified: identity.createdAt,
+    product_name: 'nyc-framing', metadata_last_modified: identity.createdAt,
   });
   assert.equal(item.entity_payload.fields, undefined, 'generic Item uses custom_fields only');
   assert.deepEqual(item.entity_payload.display_order, ['full_name', 'company', 'budget', 'icp_fit', 'confidence', 'team_size', 'status', 'description', 'source']);
@@ -64,7 +64,7 @@ test('complete enrichment preserves the stored identity and uses updatedAt with 
   assert.equal(item.url, entity(payload()).url);
   assert.deepEqual(item.entity_payload.attributes, {
     title: { text: 'Inbound Lead' }, display_type: 'Lead', display_id: 'LEAD-12345678',
-    product_name: 'Dreamforce', metadata_last_modified: updatedIdentity.updatedAt,
+    product_name: 'nyc-framing', metadata_last_modified: updatedIdentity.updatedAt,
   });
   assert.equal(field(result, 'icp_fit').value, '92/100 · Strong fit');
   assert.equal(field(result, 'company_overview').value, complete.research.companyDescription);

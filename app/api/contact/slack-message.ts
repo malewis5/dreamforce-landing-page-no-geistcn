@@ -1,6 +1,7 @@
 import type { ContactSubmission } from '../../../lib/contact';
 import type { LeadEnrichment } from '../../../lib/lead-enrichment';
 import { scoreLead } from '../../../lib/lead-research';
+import demoConfig from '../../../demo.config.json' with { type: 'json' };
 
 export type LeadIdentity = {
   id: string;
@@ -43,7 +44,7 @@ export function buildContactSlackMessage(
               title: { text: 'Inbound Lead' },
               display_type: 'Lead',
               display_id: `LEAD-${identity.id.replace(/^lead-/, '').slice(0, 8)}`,
-              product_name: 'Dreamforce',
+              product_name: demoConfig.vercelProjectName,
               metadata_last_modified: identity.updatedAt ?? identity.createdAt,
             },
             // Generic Item entities use custom_fields, not a fields object.

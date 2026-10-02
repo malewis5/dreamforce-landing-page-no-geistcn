@@ -43,7 +43,7 @@ export async function POST(request: Request): Promise<Response> {
       const enrichment = await enrichLead(submission.data);
       lead = { ...lead, enrichment, updatedAt: Math.floor(Date.now() / 1000) };
       await saveLead(lead);
-      const token = await getToken(process.env.SLACK_CONNECTOR_ID || "slack/dreamforce-landing-page", {
+      const token = await getToken(process.env.SLACK_CONNECTOR_ID || "slack/demo-agent", {
         subject: { type: "app" },
       });
       const response = await fetch("https://slack.com/api/chat.postMessage", {
