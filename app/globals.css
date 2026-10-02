@@ -1,0 +1,99 @@
+@import 'tailwindcss';
+
+/* Design values used by this page. */
+:root {
+  --ds-background-100: #fff;
+  --ds-background-200: #fafafa;
+  --ds-gray-100: #f3f3f3;
+  --ds-gray-700: #8a8a8a;
+  --ds-gray-900: #555;
+  --ds-gray-1000: #1f1f1f;
+  --ds-gray-alpha-400: rgb(0 0 0 / 8%);
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), Arial, sans-serif;
+  --color-gray-100: var(--ds-gray-100);
+  --color-gray-700: var(--ds-gray-700);
+  --color-gray-900: var(--ds-gray-900);
+  --color-gray-1000: var(--ds-gray-1000);
+  --breakpoint-sm: 401px;
+  --breakpoint-md: 601px;
+  --breakpoint-lg: 961px;
+  --breakpoint-xl: 1200px;
+  --breakpoint-2xl: 1400px;
+}
+
+@utility text-heading-20 {
+  font-size: 20px;
+  line-height: 26px;
+  letter-spacing: -0.4px;
+  font-weight: 600;
+}
+
+@utility text-heading-24 {
+  font-size: 24px;
+  line-height: 32px;
+  letter-spacing: -0.96px;
+  font-weight: 600;
+}
+
+@utility text-heading-32 {
+  font-size: 32px;
+  line-height: 40px;
+  letter-spacing: -1.28px;
+  font-weight: 600;
+}
+
+@utility text-copy-13 {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+@utility text-copy-14 {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+@utility text-copy-16 {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+@utility text-copy-18 {
+  font-size: 18px;
+  line-height: 28px;
+}
+
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--ds-gray-alpha-400);
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--ds-background-200);
+  color: var(--ds-gray-1000);
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+}
+
+.font-editorial {
+  font-family: var(--font-editorial), Georgia, 'Times New Roman', serif;
+  font-optical-sizing: auto;
+  letter-spacing: -0.01em;
+}
+
+.label-eyebrow {
+  font-size: 0.75rem;
+  line-height: 1;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}

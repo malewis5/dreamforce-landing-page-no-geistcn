@@ -1,0 +1,44 @@
+{
+  "name": "dreamforce-landing-page",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "pnpm": ">=11",
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "build:eve": "eve build",
+    "build:local": "pnpm build:eve && pnpm build",
+    "test:eve": "node --test tests/eve-setup.test.mjs",
+    "demo": "node scripts/demo.mjs",
+    "test:demo": "node --test tests/demo.test.mjs",
+    "test:demo-trigger": "node --import ./tests/register-typescript.mjs --experimental-test-module-mocks --test tests/demo-trigger.test.mjs tests/slack-details-api.test.mjs",
+    "test:contact": "node --import ./tests/register-typescript.mjs --experimental-test-module-mocks --test tests/contact-slack-message.test.mjs tests/contact-api.test.mjs tests/slack-details-api.test.mjs tests/lead-research.test.mjs tests/lead-enrichment.test.mjs tests/lead-store.test.mjs",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@upstash/redis": "^1.38.4",
+    "@vercel/connect": "1.0.0",
+    "@vercel/oidc": "3.8.5",
+    "ai": "^7.0.82",
+    "eve": "^0.52.5",
+    "next": "16.3.4",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "24.0.1",
+    "@types/nprogress": "0.2.3",
+    "@types/react": "19.2.10",
+    "@types/react-dom": "19.2.3",
+    "microsandbox": "^0.6.18",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3"
+  }
+}
