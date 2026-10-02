@@ -15,6 +15,11 @@ export const researchResultSchema = z.object({
   purchaseIntent: z.enum(['explicit', 'exploratory', 'none']),
   confidence: z.enum(['high', 'medium', 'low']),
   rationale: z.string().max(300).trim().min(1),
+  qualification: z.object({
+    projectScope: z.enum(['full_project', 'single_item', 'unrelated', 'unknown']),
+    // Verbatim submitted timing only; null means ask, never infer from research.
+    timing: z.string().trim().min(1).max(200).nullable(),
+  }).optional(), // Existing stored research remains readable.
   sources: z.array(z.object({
     title: z.string().max(120).trim().min(1),
     url: sourceUrlSchema,
@@ -52,5 +57,30 @@ export function scoreLead(
   };
   // Always score the available signals. Unknown factors simply earn no points.
   const score = breakdown.nycOffice + breakdown.premiumOffice + breakdown.teamSize + breakdown.purchaseIntent + breakdown.budget;
-  return { score, label: score >= 75 ? 'Strong fit' : score >= 45 ? 'Possible fit' : 'Low fit', breakdown };
+  const scope = research?.qualification?.projectScope;
+  const eligible = scope === undefined || (scope === 'full_project'
+    && research?.match === 'matched' && research.nycOffice === 'confirmed'
+    && research.premiumOffice !== 'unknown' && research.purchaseIntent !== 'none');
+  return { score, label: scope === 'single_item' || scope === 'unrelated' ? 'Low fit' : score >= 75 && eligible ? 'Strong fit' : score >= 45 ? 'Possible fit' : 'Low fit', breakdown };
+}
+
+// Internal drafts only: no sending or claims about availability, price, or deadlines.
+export function leadFollowUp(research: ResearchResult, budget?: ContactSubmission['budget']) {
+  const qualification = research.qualification;
+  if (!qualification) return undefined; // Legacy records have not been qualified.
+  const questions: string[] = [];
+  if (!budget || budget === 'Not sure yet') questions.push('What budget range are you considering?');
+  if (!qualification.timing) questions.push('What is your target installation date or timeline?');
+  if (qualification.projectScope === 'unknown') questions.push('Are you looking for a full framing and display project, including design, fabrication, and installation?');
+  if (research.nycOffice !== 'confirmed') questions.push('Where is the project space located?');
+  const promising = qualification.projectScope === 'full_project'
+    && research.match === 'matched' && research.nycOffice === 'confirmed'
+    && research.premiumOffice !== 'unknown' && research.purchaseIntent !== 'none';
+  return {
+    questions,
+    draft: promising
+      ? ['Thanks for reaching out. We are an end-to-end framing and display studio, supporting design, fabrication, and installation for premium NYC spaces.',
+        'We would be happy to arrange a design consultation to explore your project.', ...questions].join(' ')
+      : null,
+  };
 }
