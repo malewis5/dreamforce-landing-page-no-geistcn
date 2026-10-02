@@ -11,8 +11,8 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 const CONNECTOR = 'slack/dreamforce-landing-page';
-const APP_ID = demoConfig.slackAppId;
-const TEAM_ID = demoConfig.slackTeamId;
+const APP_ID = process.env.SLACK_APP_ID || demoConfig.slackAppId;
+const TEAM_ID = process.env.SLACK_TEAM_ID || demoConfig.slackTeamId;
 // Verifies the forwarded bearer token against this deployment's project and
 // environment. This route does not accept unsigned or direct Slack requests.
 const verifyWebhook = createConnectWebhookVerifier();

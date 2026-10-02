@@ -26,9 +26,11 @@ connection named `slack/dreamforce-landing-page`. Lead research uses Eve and
 requires an AI Gateway key or linked Vercel development credentials.
 
 `demo.config.json` contains example Slack app, workspace, channel, and presenter
-IDs. Replace all four with IDs from your own workspace before enabling the
-webhook or running the demo scripts. No credentials are included in this
-repository.
+IDs. For a deployment, set `SLACK_APP_ID`, `SLACK_TEAM_ID`, `SLACK_CHANNEL_ID`,
+and `SLACK_TRIGGER_USER_ID` as private Vercel environment variables before
+enabling the webhook or running the demo scripts. These override the example
+IDs without putting workspace details in the public repository. No credentials
+are included in this repository.
 
 ## Project files
 

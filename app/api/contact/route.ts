@@ -53,7 +53,7 @@ export async function POST(request: Request): Promise<Response> {
           "Content-Type": "application/json; charset=utf-8",
         },
         body: JSON.stringify({
-          channel: demoConfig.slackChannel,
+          channel: process.env.SLACK_CHANNEL_ID || demoConfig.slackChannel,
           ...buildContactSlackMessage(lead.submission, lead, enrichment),
         }),
         signal: AbortSignal.timeout(10_000),

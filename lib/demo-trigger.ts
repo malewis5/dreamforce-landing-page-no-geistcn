@@ -32,7 +32,8 @@ function record(value: unknown): Record<string, unknown> | null {
 
 function validTrigger(value: unknown): value is DemoTrigger & Record<string, unknown> {
   const event = record(value);
-  const user: unknown = (demoConfig as { slackTriggerUser?: unknown }).slackTriggerUser;
+  const user: unknown = process.env.SLACK_TRIGGER_USER_ID
+    || (demoConfig as { slackTriggerUser?: unknown }).slackTriggerUser;
   return !!event && typeof user === 'string' && /^U[A-Z0-9]+$/.test(user)
     && (event.scene === 'seed' || event.scene === 'playbook')
     && event.user === user
