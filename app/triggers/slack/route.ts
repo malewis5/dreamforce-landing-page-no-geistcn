@@ -10,7 +10,7 @@ import demoConfig from '../../../demo.config.json' with { type: 'json' };
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const CONNECTOR = 'slack/dreamforce-landing-page';
+const CONNECTOR = process.env.SLACK_CONNECTOR_ID || 'slack/dreamforce-landing-page';
 const APP_ID = process.env.SLACK_APP_ID || demoConfig.slackAppId;
 const TEAM_ID = process.env.SLACK_TEAM_ID || demoConfig.slackTeamId;
 // Verifies the forwarded bearer token against this deployment's project and
