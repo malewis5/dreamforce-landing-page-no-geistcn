@@ -45,14 +45,14 @@ const enrichLead = mock.fn(async () => complete);
 const createLead = mock.fn(async (submission) => storedLead(submission));
 const saveLead = mock.fn(async () => {});
 mock.module("next/server.js", {
-  exports: { after: (callback) => tasks.push(callback) },
+  namedExports: { after: (callback) => tasks.push(callback) },
 });
-mock.module("@vercel/connect", { exports: { getToken } });
+mock.module("@vercel/connect", { namedExports: { getToken } });
 mock.module(new URL("../lib/lead-enrichment.ts", import.meta.url).href, {
-  exports: { enrichLead },
+  namedExports: { enrichLead },
 });
 mock.module(new URL("../lib/lead-store.ts", import.meta.url).href, {
-  exports: { createLead, saveLead },
+  namedExports: { createLead, saveLead },
 });
 const { POST } = await import(routeUrl);
 hooks.deregister();

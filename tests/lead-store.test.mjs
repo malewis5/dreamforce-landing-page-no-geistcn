@@ -7,7 +7,7 @@ const get = mock.fn(async (key) => structuredClone(records.get(key) ?? null));
 const write = async (key, value) => { records.set(key, structuredClone(value)); return 'OK'; };
 const set = mock.fn(write);
 const fromEnv = mock.fn(() => ({ get, set }));
-mock.module('@upstash/redis', { exports: { Redis: { fromEnv } } });
+mock.module('@upstash/redis', { namedExports: { Redis: { fromEnv } } });
 const { createLead, saveLead, getLead } = await import('../lib/lead-store.ts');
 
 const submission = {

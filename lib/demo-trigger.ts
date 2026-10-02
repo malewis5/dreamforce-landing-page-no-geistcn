@@ -1,10 +1,11 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import { Redis } from '@upstash/redis';
 import { getToken } from '@vercel/connect';
-import { scenes } from '../scripts/demo-scenes.mjs';
-import { buildMessage, slackCall, target } from './demo-runner.mjs';
+import { conversationSchema, defaultConversations, normalizeTrigger } from './conversations';
+import type { Conversation } from './conversations';
+import { buildConversationMessage, slackCall, target } from './demo-runner.mjs';
 
-export type DemoTrigger = { scene: 'seed' | 'playbook'; channel: string; ts: string; user: string };
+export type DemoTrigger = { scene: string; channel: string; ts: string; user: string };
 type Receipt = { channel: string; ts: string; thread_ts: string };
 type Progress = {
   status: 'running' | 'complete' | 'needs-review';
@@ -22,6 +23,7 @@ type Options = {
   fetchFn?: typeof fetch;
   wait?: (ms: number, signal: AbortSignal) => Promise<void>;
   signal?: AbortSignal;
+  conversation?: Conversation;
 };
 
 function record(value: unknown): Record<string, unknown> | null {
@@ -29,31 +31,41 @@ function record(value: unknown): Record<string, unknown> | null {
     ? value as Record<string, unknown> : null;
 }
 
-function validTrigger(value: unknown): value is DemoTrigger & Record<string, unknown> {
+function validTrigger(value: unknown, conversation?: Conversation): value is DemoTrigger & Record<string, unknown> {
   const event = record(value);
-  return !!event && (event.scene === 'seed' || event.scene === 'playbook')
+  return !!event && !!conversation && event.scene === conversation.id && conversation.enabled
     && typeof event.user === 'string' && /^U[A-Z0-9]+$/.test(event.user)
     && typeof event.channel === 'string' && event.channel === target.channel
     && /^C[A-Z0-9]+$/.test(event.channel)
     && typeof event.ts === 'string' && /^\d+\.\d+$/.test(event.ts);
 }
 
-const normalize = (text: string): string => text.replace(/[‘’]/g, "'").trim().replace(/\s+/g, ' ');
-
-export function matchDemoTrigger(event: unknown): DemoTrigger | null {
+export function isDemoMessageCandidate(event: unknown): boolean {
   const message = record(event);
-  if (!message || message.type !== 'message'
-    || message.channel_type !== 'channel'
-    || ['subtype', 'bot_id', 'app_id', 'hidden', 'thread_ts', 'edited'].some((key) => key in message)
-    || typeof message.text !== 'string') return null;
-  const text = normalize(message.text);
-  const scene = (['seed', 'playbook'] as const).find((name) => text === normalize(scenes[name][0].text));
-  const trigger = { scene, channel: message.channel, ts: message.ts, user: message.user };
-  return validTrigger(trigger) ? trigger : null;
+  return !!message && message.type === 'message'
+    && message.channel_type === 'channel'
+    && !['subtype', 'bot_id', 'app_id', 'hidden', 'thread_ts', 'edited'].some((key) => key in message)
+    && typeof message.text === 'string'
+    && typeof message.user === 'string' && /^U[A-Z0-9]+$/.test(message.user)
+    && typeof message.channel === 'string' && message.channel === target.channel
+    && /^C[A-Z0-9]+$/.test(message.channel)
+    && typeof message.ts === 'string' && /^\d+\.\d+$/.test(message.ts);
+}
+
+export function matchDemoTrigger(event: unknown, conversations: Conversation[] = defaultConversations): DemoTrigger | null {
+  if (!isDemoMessageCandidate(event)) return null;
+  const message = record(event)!;
+  const conversation = conversations.find((item) => item.enabled
+    && normalizeTrigger(item.trigger) === normalizeTrigger(message.text as string));
+  const trigger = { scene: conversation?.id, channel: message.channel, ts: message.ts, user: message.user };
+  return validTrigger(trigger, conversation) ? trigger : null;
 }
 
 export async function runDemoReplies(trigger: DemoTrigger, options: Options = {}): Promise<void> {
-  if (!validTrigger(trigger)) throw new Error('Invalid demo trigger.');
+  const selected = options.conversation ?? defaultConversations.find((item) => item.id === trigger?.scene);
+  if (!selected || !conversationSchema.safeParse(selected).success || !validTrigger(trigger, selected)) {
+    throw new Error('Invalid demo trigger.');
+  }
   const { channel, ts } = trigger;
   const deadline = AbortSignal.timeout(45_000);
   const signal = options.signal ? AbortSignal.any([deadline, options.signal]) : deadline;
@@ -112,17 +124,20 @@ export async function runDemoReplies(trigger: DemoTrigger, options: Options = {}
         return result;
       });
     const { data: info } = await call('conversations.info', { channel });
-    const conversation = record(record(info)?.channel);
-    if (!conversation || conversation.id !== channel || conversation.is_private !== false
-      || conversation.is_archived !== false) throw new Error('Demo channel unavailable.');
+    const threadChannel = record(record(info)?.channel);
+    if (!threadChannel || threadChannel.id !== channel || threadChannel.is_private !== false
+      || threadChannel.is_archived !== false) throw new Error('Demo channel unavailable.');
 
-    const replies = scenes[trigger.scene].slice(1);
+    const replies = selected.replies;
     for (const [index, line] of replies.entries()) {
       // Durable uncertainty marker BEFORE sending: even a killed process must not replay.
       progress.status = 'needs-review';
       progress.pending = index;
       await save();
-      const { data } = await call('chat.postMessage', buildMessage(line, ts, channel));
+      const member = selected.members.find((item) => item.id === line.memberId)!;
+      const { data } = await call('chat.postMessage', buildConversationMessage({
+        name: member.name, emoji: member.emoji, text: line.text,
+      }, ts, channel));
       const receipt = record(data);
       if (!receipt || typeof receipt.ts !== 'string' || !/^\d+\.\d+$/.test(receipt.ts)
         || receipt.channel !== channel || record(receipt.message)?.thread_ts !== ts)

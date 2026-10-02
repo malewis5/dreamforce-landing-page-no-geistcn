@@ -3,12 +3,14 @@ import { registerHooks } from 'node:module';
 import { afterEach, beforeEach, mock, test } from 'node:test';
 import { contactSubmissionSchema } from '../lib/contact.ts';
 import { researchResultSchema } from '../lib/lead-research.ts';
-import { matchDemoTrigger } from '../lib/demo-trigger.ts';
+import { isDemoMessageCandidate, matchDemoTrigger } from '../lib/demo-trigger.ts';
+import { defaultConversations } from '../lib/conversations.ts';
 import demoConfig from '../demo.config.json' with { type: 'json' };
 import { scenes } from '../scripts/demo-scenes.mjs';
 
 const routeUrl = new URL('../app/triggers/slack/route.ts', import.meta.url).href;
 const storeUrl = new URL('../lib/lead-store.ts', import.meta.url).href;
+const conversationStoreUrl = new URL('../lib/conversation-store.ts', import.meta.url).href;
 // Match the current route imports exactly, including the mocked persistence boundary.
 // The shared --import loader resolves the builder's transitive TS dependencies.
 const hooks = registerHooks({
@@ -43,7 +45,9 @@ const saved = {
 const enrichLead = mock.fn(async () => { throw new Error('Opening details must never start research'); });
 const getLead = mock.fn(async () => saved);
 const runDemoReplies = mock.fn(async () => {});
-mock.module(new URL('../lib/demo-trigger.ts', import.meta.url).href, { namedExports: { matchDemoTrigger, runDemoReplies } });
+const listConversations = mock.fn(async () => structuredClone(defaultConversations));
+mock.module(new URL('../lib/demo-trigger.ts', import.meta.url).href, { namedExports: { isDemoMessageCandidate, matchDemoTrigger, runDemoReplies } });
+mock.module(conversationStoreUrl, { namedExports: { listConversations } });
 mock.module(storeUrl, { namedExports: { getLead } });
 mock.module(new URL('../lib/lead-enrichment.ts', import.meta.url).href, { namedExports: { enrichLead } });
 mock.module('@vercel/connect', { namedExports: { getToken } });
@@ -70,6 +74,8 @@ beforeEach((t) => {
   tasks.length = 0;
   runDemoReplies.mock.resetCalls();
   runDemoReplies.mock.mockImplementation(async () => {});
+  listConversations.mock.resetCalls();
+  listConversations.mock.mockImplementation(async () => structuredClone(defaultConversations));
   verify.mock.resetCalls();
   verify.mock.mockImplementation(async () => true);
   getToken.mock.resetCalls();
@@ -165,7 +171,7 @@ for (const scene of ['seed', 'playbook']) {
       assert.equal(runDemoReplies.mock.callCount(), callsBefore + 1);
       assert.deepEqual(runDemoReplies.mock.calls.at(-1).arguments, [{
         scene, channel, ts: '1789000200.123456', user,
-      }]);
+      }, { conversation: defaultConversations.find((item) => item.id === scene) }]);
     }
     assert.equal(getLead.mock.callCount(), 0);
     assert.equal(getToken.mock.callCount(), 0);
@@ -183,6 +189,7 @@ for (const scene of ['seed', 'playbook']) {
       { channel: 'GPRIVATE' }, { channel: 'DDIRECT' },
     ]) {
       assert.equal((await POST(request(kickoff({ text: scenes[scene][0].text, ...overrides })))).status, 200);
+      while (tasks.length) await tasks.pop()();
     }
     assert.equal(tasks.length, 0);
     assert.equal(runDemoReplies.mock.callCount(), 0);
@@ -217,12 +224,53 @@ test('website kickoff is acknowledged without scheduling any demo, even with an 
   for (const scene of [undefined, 'seed', 'playbook', 'website']) {
     for (const text of [scenes.website[0].text, ` \n${scenes.website[0].text.replaceAll(' ', '\t\n')} `]) {
       assert.equal((await POST(request(kickoff({ text, scene })))).status, 200);
+      while (tasks.length) await tasks.pop()();
     }
   }
   assert.equal(tasks.length, 0);
   assert.equal(runDemoReplies.mock.callCount(), 0);
   assert.equal(getLead.mock.callCount(), 0);
   assert.equal(getToken.mock.callCount(), 0);
+});
+
+test('a saved custom trigger schedules its selected conversation snapshot', async () => {
+  const custom = { ...structuredClone(defaultConversations[0]),
+    id: '12345678-1234-4234-8234-123456789abc', title: 'Custom', trigger: 'Show the new display.' };
+  listConversations.mock.mockImplementation(async () => [...structuredClone(defaultConversations), custom]);
+  const response = await POST(request(kickoff({ text: custom.trigger })));
+  assert.equal(response.status, 200);
+  assert.equal(tasks.length, 1);
+  await tasks.pop()();
+  assert.deepEqual(runDemoReplies.mock.calls.at(-1).arguments, [
+    { scene: custom.id, channel: demoConfig.slackChannel, ts: '1789000200.123456', user: 'UPRESENTER' },
+    { conversation: custom },
+  ]);
+});
+
+test('a disabled conversation does not schedule replies', async () => {
+  listConversations.mock.mockImplementation(async () => [
+    { ...structuredClone(defaultConversations[0]), enabled: false }, defaultConversations[1],
+  ]);
+  assert.equal((await POST(request(kickoff()))).status, 200);
+  assert.equal(tasks.length, 1);
+  await tasks.pop()();
+  assert.equal(tasks.length, 0);
+  assert.equal(runDemoReplies.mock.callCount(), 0);
+});
+
+test('acknowledges a candidate before reading the conversation catalog', async () => {
+  const read = Promise.withResolvers();
+  listConversations.mock.mockImplementation(() => read.promise);
+  const response = await POST(request(kickoff()));
+  assert.equal(response.status, 200);
+  assert.equal(listConversations.mock.callCount(), 0);
+  const work = tasks.pop()();
+  await new Promise(setImmediate);
+  assert.equal(listConversations.mock.callCount(), 1);
+  assert.equal(runDemoReplies.mock.callCount(), 0);
+  read.resolve(structuredClone(defaultConversations));
+  await work;
+  assert.equal(runDemoReplies.mock.callCount(), 1);
 });
 
 test('kickoff worker failures are caught after acknowledgment without logging private details', async (t) => {

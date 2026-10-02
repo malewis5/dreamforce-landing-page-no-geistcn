@@ -17,6 +17,7 @@
     "demo": "node scripts/demo.mjs",
     "test:demo": "node --test tests/demo.test.mjs",
     "test:demo-trigger": "node --import ./tests/register-typescript.mjs --experimental-test-module-mocks --test tests/demo-trigger.test.mjs tests/slack-details-api.test.mjs",
+    "test:cms": "node --import ./tests/register-typescript.mjs --experimental-test-module-mocks --test tests/conversation-store.test.mjs tests/demo-trigger.test.mjs tests/slack-details-api.test.mjs",
     "test:contact": "node --import ./tests/register-typescript.mjs --experimental-test-module-mocks --test tests/contact-slack-message.test.mjs tests/contact-api.test.mjs tests/slack-details-api.test.mjs tests/lead-research.test.mjs tests/lead-enrichment.test.mjs tests/lead-store.test.mjs",
     "start": "next start"
   },

@@ -4,7 +4,8 @@ import { createConnectWebhookVerifier } from '@vercel/connect/chat';
 import { z } from 'zod';
 import { buildContactSlackMessage } from '../../api/contact/slack-message';
 import { getLead } from '../../../lib/lead-store';
-import { matchDemoTrigger, runDemoReplies } from '../../../lib/demo-trigger';
+import { isDemoMessageCandidate, matchDemoTrigger, runDemoReplies } from '../../../lib/demo-trigger';
+import { listConversations } from '../../../lib/conversation-store';
 import demoConfig from '../../../demo.config.json' with { type: 'json' };
 
 export const runtime = 'nodejs';
@@ -58,17 +59,20 @@ export async function POST(request: Request): Promise<Response> {
   }
   if (envelope.data.type !== 'event_callback') return Response.json({ ok: true });
   if (envelope.data.event.type === 'message') {
-    const trigger = matchDemoTrigger(envelope.data.event);
-    if (trigger) {
-      after(async () => {
-        try {
-          await runDemoReplies(trigger);
-        } catch {
-          // Never log message text, credentials, or raw storage errors.
-          console.error('Demo thread replies failed; inspect saved delivery state before retrying.');
+    if (!isDemoMessageCandidate(envelope.data.event)) return Response.json({ ok: true });
+    after(async () => {
+      try {
+        const conversations = await listConversations();
+        const trigger = matchDemoTrigger(envelope.data.event, conversations);
+        if (trigger) {
+          const conversation = conversations.find((item) => item.id === trigger.scene)!;
+          await runDemoReplies(trigger, { conversation });
         }
-      });
-    }
+      } catch {
+        // Never log message text, credentials, or raw storage errors.
+        console.error('Demo thread replies failed; inspect saved delivery state before retrying.');
+      }
+    });
     return Response.json({ ok: true });
   }
   if (envelope.data.event.type !== 'entity_details_requested') return Response.json({ ok: true });

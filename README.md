@@ -34,6 +34,22 @@ and have permission to read channel messages and post replies. These environment
 variables override the example IDs without putting workspace details in the
 public repository. No credentials are included in this repository.
 
+## Conversation editor
+
+Open `/cms` to create and edit scripted Slack conversations. Set
+`DEMO_CMS_PASSWORD` as a private Vercel environment variable before opening the
+editor; sign in with username `editor` and that password. The editor lets you
+choose an exact message trigger, the team members and their Slack emoji icons,
+and up to eight ordered replies. Saving an enabled conversation makes it live
+immediately in the configured public Slack channel. Copy the trigger from the
+editor and post it as a new human message in that channel to start a thread.
+Disable a conversation to stop new triggers without deleting its script.
+
+Conversation records live in the same Upstash Redis database as the lead data,
+under separate `nyc-framing:cms:*` keys. The Services and inbound lead playbook
+conversations appear as editable defaults on an empty database. Changes to a
+conversation do not replay or modify threads that have already started.
+
 ## Project files
 
 - `app/page.tsx` assembles the landing page.

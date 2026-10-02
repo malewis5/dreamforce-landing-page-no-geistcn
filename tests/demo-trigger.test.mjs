@@ -186,6 +186,33 @@ test('posts only Jordan → Maya → Alex → Sam, in the original thread/channe
   }
 });
 
+test('a saved custom conversation matches its trigger and posts the selected members and emoji', async () => {
+  const conversation = {
+    id: '12345678-1234-4234-8234-123456789abc', title: 'Custom preview', enabled: true,
+    trigger: 'Could we show a new display?',
+    members: [
+      { id: 'one', name: 'Nina — Design', emoji: ':art:' },
+      { id: 'two', name: 'Sam — Engineering', emoji: ':technologist:' },
+    ],
+    replies: [
+      { memberId: 'one', text: 'I can sketch it.' },
+      { memberId: 'two', text: 'I can build it.' },
+    ],
+  };
+  const value = matchDemoTrigger(event({ text: conversation.trigger }), [conversation]);
+  assert.deepEqual(value, {
+    scene: conversation.id, channel: demoConfig.slackChannel, user: 'UPRESENTER', ts: '1789000000.123456',
+  });
+  assert.equal(matchDemoTrigger(event({ text: conversation.trigger }), [{ ...conversation, enabled: false }]), null);
+  const h = harness();
+  await runDemoReplies(value, { ...h.options, conversation });
+  assert.deepEqual(h.calls.slice(1).map(({ body }) => [body.username, body.icon_emoji, body.text]), [
+    ['Nina — Design', ':art:', 'I can sketch it.'],
+    ['Sam — Engineering', ':technologist:', 'I can build it.'],
+  ]);
+  assert.deepEqual(h.delays, [3000]);
+});
+
 test('playbook posts only Sam → Maya → Jordan in the original thread/channel, never duplicating the parent', async () => {
   for (const channel of [demoConfig.slackChannel]) {
     const h = harness();

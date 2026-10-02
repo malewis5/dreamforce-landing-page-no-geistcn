@@ -13,8 +13,8 @@ class StubClient {
     this.sessions = { create: forbidden, attach: forbidden, send: forbidden };
   }
 }
-const eveMock = mock.module('eve/client', { exports: { Client: StubClient } });
-const oidcMock = mock.module('@vercel/oidc', { exports: { getVercelOidcToken: oidcToken } });
+const eveMock = mock.module('eve/client', { namedExports: { Client: StubClient } });
+const oidcMock = mock.module('@vercel/oidc', { namedExports: { getVercelOidcToken: oidcToken } });
 after(() => { eveMock.restore(); oidcMock.restore(); });
 const { businessEmailDomain, createResearchClient, enrichLead, leadContextSchema } =
   await import('../lib/lead-enrichment.ts');
