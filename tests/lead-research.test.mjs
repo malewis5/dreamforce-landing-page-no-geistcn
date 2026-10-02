@@ -108,3 +108,27 @@ test('source links must be valid HTTPS URLs without credentials', () => {
     assert.equal(researchResultSchema.safeParse({ ...research, sources: [{ title: 'Source', url }] }).success, false);
   }
 });
+
+test('full-project qualification prevents frame-shop and unrelated requests becoming Strong fit', () => {
+  for (const projectScope of ['single_item', 'unrelated', 'unknown', 'full_project']) {
+    const qualified = parsed({ qualification: { projectScope, timing: null } });
+    assert.equal(scoreLead(qualified, '1,000+', targetBudget).label,
+      projectScope === 'full_project' ? 'Strong fit' : projectScope === 'unknown' ? 'Possible fit' : 'Low fit');
+  }
+});
+
+test('follow-up asks for missing details and offers consultation only for promising projects', async () => {
+  const { leadFollowUp } = await import('../lib/lead-research.ts');
+  const qualified = parsed({ qualification: { projectScope: 'full_project', timing: null } });
+  const result = leadFollowUp(qualified, 'Not sure yet');
+  assert.match(result.draft, /end-to-end/);
+  assert.match(result.draft, /design consultation/);
+  assert.match(result.draft, /budget range/);
+  assert.match(result.draft, /timeline/);
+  assert.ok(!result.draft.includes('$30'));
+  assert.deepEqual(leadFollowUp(parsed({ qualification: { projectScope: 'full_project', timing: 'next spring' } }), targetBudget).questions, []);
+  for (const projectScope of ['single_item', 'unrelated', 'unknown']) {
+    assert.equal(leadFollowUp(parsed({ qualification: { projectScope, timing: null } }), targetBudget).draft, null);
+  }
+  assert.equal(leadFollowUp(parsed(), targetBudget), undefined);
+});

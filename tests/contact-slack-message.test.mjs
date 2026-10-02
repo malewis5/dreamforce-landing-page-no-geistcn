@@ -206,3 +206,16 @@ test('trims outer whitespace but preserves message paragraphs and Unicode', () =
   assert.equal(field(result, 'full_name').value, 'Jane Doe');
   assert.equal(field(result, 'description').value, 'Hello 𐐀\n\nSecond paragraph.');
 });
+
+test('qualified leads expose plain-text questions and review-only consultation drafts in Slack', () => {
+  const research = researchResultSchema.parse({ ...complete.research,
+    qualification: { projectScope: 'full_project', timing: null },
+  });
+  const result = buildContactSlackMessage({ ...submission, budget: 'Not sure yet' }, identity, { ...complete, research });
+  assert.match(field(result, 'qualification_questions').value, /budget range/);
+  assert.match(field(result, 'qualification_questions').value, /timeline/);
+  assert.match(field(result, 'reply_draft').value, /design consultation/);
+  assert.match(field(result, 'reply_draft').label, /review before sending/);
+  assert.equal(field(result, 'reply_draft').type, 'string');
+  assert.ok(entity(result).entity_payload.display_order.includes('reply_draft'));
+});

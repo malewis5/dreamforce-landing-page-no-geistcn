@@ -1,6 +1,6 @@
 import type { ContactSubmission } from '../../../lib/contact';
 import type { LeadEnrichment } from '../../../lib/lead-enrichment';
-import { scoreLead } from '../../../lib/lead-research';
+import { leadFollowUp, scoreLead } from '../../../lib/lead-research';
 import demoConfig from '../../../demo.config.json' with { type: 'json' };
 
 export type LeadIdentity = {
@@ -18,12 +18,19 @@ export function buildContactSlackMessage(
 ) {
   const research = enrichment?.status === 'complete' ? enrichment.research : undefined;
   const fit = scoreLead(research, input.teamSize, input.budget);
+  const followUp = research ? leadFollowUp(research, input.budget) : undefined;
   const researchFields = [
     { key: 'icp_fit', label: 'ICP fit', type: 'string', value: `${fit.score}/100 · ${fit.label}` },
     ...(research ? [
       { key: 'company_overview', label: 'Company overview', type: 'string', value: research.companyDescription, long: true },
       { key: 'fit_reason', label: 'Why it fits', type: 'string', value: research.rationale, long: true },
       { key: 'confidence', label: 'Research confidence', type: 'string', value: research.confidence },
+      ...(followUp ? [
+        { key: 'project_scope', label: 'Project scope', type: 'string', value: research.qualification!.projectScope },
+        { key: 'timing', label: 'Submitted timing', type: 'string', value: research.qualification!.timing ?? 'Unknown — ask the lead' },
+        ...(followUp.questions.length ? [{ key: 'qualification_questions', label: 'Questions to ask', type: 'string', value: followUp.questions.join(' '), long: true }] : []),
+        ...(followUp.draft ? [{ key: 'reply_draft', label: 'Reply draft — review before sending', type: 'string', value: followUp.draft, long: true }] : []),
+      ] : []),
       ...research.sources.map((source, index) => ({ key: `research_source_${index}`, label: source.title, type: 'slack#/types/link', value: source.url })),
     ] : [
       { key: 'confidence', label: 'Research confidence', type: 'string', value: enrichment ? 'Unavailable' : 'Pending' },
