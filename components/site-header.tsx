@@ -4,6 +4,7 @@ import { ButtonLink } from './ui/controls';
 
 const NAV_LINKS = [
   { label: 'Studio', href: '#about' },
+  { label: 'Services', href: '#services' },
   { label: 'Commission', href: '#commission' },
   { label: 'Contact', href: '#contact' },
 ] as const;
